@@ -4,6 +4,7 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const app = express();
 const mongoose = require("mongoose");
+const encrypt = require("mongoose-encryption");
 
 const uriAtlas = "mongodb+srv://admin:admin@cluster0.vbbdz.mongodb.net/?retryWrites=true&w=majority";					
 
@@ -18,7 +19,7 @@ useUnifiedTopology: true,
 dbName: "usersDB"					
 });					
 					
-const userSchema = {					
+const userSchema = new mongoose.Schema ({					
     email: {					
         type: String,					
         required: [true, 'missing email adress']					
@@ -27,7 +28,11 @@ const userSchema = {
         type: String,					
         required: [true, 'missing paswword']					
     }					
-    };		
+    });
+
+
+const secret = "This is a long unguessable string that is used as a secret encryption method.";
+userSchema.plugin(encrypt, { secret: secret, encryptedFields: ['password'] });
 
 const User = mongoose.model("User", userSchema);					
 
