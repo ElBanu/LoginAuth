@@ -7,6 +7,7 @@ const session = require('express-session');
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose");
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const FacebookStrategy = require('passport-facebook').Strategy
 const findOrCreate = require('mongoose-findorcreate');
 
 const app = express();
@@ -31,7 +32,7 @@ main().catch(err => console.log(err));
 async function main() {
   await mongoose.connect(process.env.MONGO_URL, {					
     useNewUrlParser: true,					
-    useUnifiedTopology: true,					
+    // useUnifiedTopology: true,					
     dbName: "usersDB"					
     });
 }
@@ -76,6 +77,19 @@ passport.use(new GoogleStrategy({
   }
 ));
 
+passport.use(new FacebookStrategy({
+  clientID: process.env.FACEBOOK_APP_ID,
+  clientSecret: process.env.FACEBOOK_APP_SECRET,
+  callbackURL: "http://localhost:3000/auth/facebook/callback"
+},
+function(accessToken, refreshToken, profile, cb) {
+  User.findOrCreate({ facebookId: profile.id }, function (err, user) {
+    return cb(err, user);
+  });
+}
+));
+
+
 app.get("/", function(req, res){
   res.render("home");
 });
@@ -87,8 +101,17 @@ app.get("/auth/google",
 app.get("/auth/google/secrets",
   passport.authenticate('google', { failureRedirect: "/login" }),
   function(req, res) {
-    // Successful authentication, redirect to secrets.
     res.redirect("/secrets");
+  });
+
+app.get('/auth/facebook',
+  passport.authenticate('facebook')
+);
+
+app.get('/auth/facebook/callback',
+  passport.authenticate('facebook', { failureRedirect: '/login' }),
+  function(req, res) {
+    res.redirect('/secrets');
   });
 
 app.get("/login", function(req, res){
@@ -121,10 +144,6 @@ app.get("/submit", function(req, res){
 
 app.post("/submit", function(req, res){
   const submittedSecret = req.body.secret;
-
-//Once the user is authenticated and their session gets saved, their user details are saved to req.user.
-  // console.log(req.user.id);
-
   User.findById(req.user.id, function(err, foundUser){
     if (err) {
       console.log(err);
